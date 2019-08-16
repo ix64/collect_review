@@ -2,7 +2,8 @@ package main
 
 import (
 	"bytes"
-	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
+	"github.com/julienschmidt/httprouter"
 	"go.etcd.io/bbolt"
 	"io/ioutil"
 	"log"
@@ -15,9 +16,12 @@ var channels []string
 
 func main() {
 	channels = []string{"jd", "taobao", "tmall", "suning"}
+	_ = godotenv.Load(".env")
+	log.Println("Write Upload Log At (LOG_PATH): ", os.Getenv("LOG_PATH"))
 
 	var err error
-	db, err = bbolt.Open("./db", 0666, nil)
+	log.Println("Use Database (DB_PATH): ", os.Getenv("DB_PATH"))
+	db, err = bbolt.Open(os.Getenv("DB_PATH"), 0666, nil)
 	handle(err)
 	defer db.Close()
 	err = db.Batch(func(tx *bbolt.Tx) error {
@@ -28,31 +32,29 @@ func main() {
 	})
 	handle(err)
 
-	gin.SetMode(gin.ReleaseMode)
-	r := gin.Default()
+	r := httprouter.New()
 	r.POST("/:channel/:id", dealUpload)
-	r.GET("/", func(c *gin.Context) {
-		c.String(http.StatusOK, "Review Collect Server(0.0.1). https://git.ixarea.com/ix64/review_collect")
-	})
+	r.GET("/", dealHome)
 	r.GET("/:channel", dealDownload)
-	err = r.Run("127.0.0.1:6481")
+	log.Print("Listen at (BIND): ", os.Getenv("BIND"))
+	err = http.ListenAndServe(os.Getenv("BIND"), r)
 	handle(err)
 }
 
-func dealUpload(c *gin.Context) {
-	channel := c.Param("channel")
+func dealUpload(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	channel := ps.ByName("channel")
 	if !checkExist(channel, channels) {
-		c.JSON(http.StatusNotAcceptable, gin.H{"status": false})
+		w.WriteHeader(http.StatusNotAcceptable)
 		return
 	}
-	id := c.Param("id")
-	f, err := os.OpenFile("./"+channel+".txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
+	id := ps.ByName("id")
+	f, err := os.OpenFile(os.Getenv("LOG_PATH")+channel+".txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
 	if err != nil {
 		handle(err)
 	} else {
 		defer f.Close()
 	}
-	body, err := ioutil.ReadAll(c.Request.Body)
+	body, err := ioutil.ReadAll(r.Body)
 	handle(err)
 
 	line := bytes.Join([][]byte{[]byte(id), body, {'\n'}}, []byte(""))
@@ -65,12 +67,12 @@ func dealUpload(c *gin.Context) {
 
 	})
 	handle(err)
-	c.JSON(http.StatusOK, gin.H{"status": true})
+	w.WriteHeader(http.StatusOK)
 }
-func dealDownload(c *gin.Context) {
-	channel := c.Param("channel")
+func dealDownload(w http.ResponseWriter, _ *http.Request, ps httprouter.Params) {
+	channel := ps.ByName("channel")
 	if !checkExist(channel, channels) {
-		c.JSON(http.StatusNotAcceptable, gin.H{"status": false})
+		w.WriteHeader(http.StatusNotAcceptable)
 		return
 	}
 	var data []byte
@@ -83,7 +85,15 @@ func dealDownload(c *gin.Context) {
 		return nil
 	})
 	handle(err)
-	c.Data(http.StatusOK, "text/plain; charset=utf-8", data)
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	_, _ = w.Write(data)
+}
+func dealHome(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	data := "Review Collect Server(0.0.1). https://githu.com/ix64/review_collect"
+	_, _ = w.Write([]byte(data))
 }
 func handle(err error) {
 	if err != nil {
