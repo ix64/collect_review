@@ -1,4 +1,7 @@
 # review_collect
+[![Build Status](https://dev.azure.com/ix64/fetch_review/_apis/build/status/ix64.review_collect?branchName=master)](https://dev.azure.com/ix64/fetch_review/_build/latest?definitionId=1&branchName=master)
+
+**适配 Chrome 扩展 [fetch_review](https://github.com/ix64/fetch_review) 的服务器端。**
 **A review collect server for chrome extension [fetch_review](https://github.com/ix64/fetch_review)**
 
 ### 使用方法
