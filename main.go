@@ -18,7 +18,6 @@ func main() {
 	channels = []string{"jd", "taobao", "tmall", "suning"}
 	_ = godotenv.Load(".env")
 	log.Println("Write Upload Log At (LOG_PATH): ", os.Getenv("LOG_PATH"))
-
 	var err error
 	log.Println("Use Database (DB_PATH): ", os.Getenv("DB_PATH"))
 	db, err = bbolt.Open(os.Getenv("DB_PATH"), 0666, nil)
@@ -64,11 +63,12 @@ func dealUpload(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	err = db.Update(func(tx *bbolt.Tx) error {
 		b := tx.Bucket([]byte(channel))
 		return b.Put([]byte(id), body)
-
 	})
 	handle(err)
+
 	w.WriteHeader(http.StatusOK)
 }
+
 func dealDownload(w http.ResponseWriter, _ *http.Request, ps httprouter.Params) {
 	channel := ps.ByName("channel")
 	if !checkExist(channel, channels) {
@@ -89,12 +89,14 @@ func dealDownload(w http.ResponseWriter, _ *http.Request, ps httprouter.Params) 
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	_, _ = w.Write(data)
 }
+
 func dealHome(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	data := "Review Collect Server(0.0.1). https://githu.com/ix64/review_collect"
+	data := "Review Collect Server(0.0.2). https://github.com/ix64/review_collect"
 	_, _ = w.Write([]byte(data))
 }
+
 func handle(err error) {
 	if err != nil {
 		log.Fatal(err)
